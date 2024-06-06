@@ -32,7 +32,6 @@
 #' for \eqn{\mu, \sigma \in (0, 1)}.
 #'
 #' @author Rodrigo M. R. de Medeiros <\email{rodrigo.matheus@live.com}>
-#' @author Diego R. Canterle <\email{diegocanterle@gmail.com}>
 #'
 #' @examples
 #' ## Probability density function for some combinations of

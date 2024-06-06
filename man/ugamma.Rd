@@ -88,6 +88,4 @@ curve(qugamma(x, 0.25, 0.5), col = "blue", add = TRUE)
 }
 \author{
 Rodrigo M. R. de Medeiros <\email{rodrigo.matheus@live.com}>
-
-Diego R. Canterle <\email{diegocanterle@gmail.com}>
 }

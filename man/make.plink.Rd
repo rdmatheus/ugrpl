@@ -145,6 +145,4 @@ Bazán, J. L., Torres-Avilés, F., Suzuki, A. K., & Louzada, F. (2017). Power an
 }
 \author{
 Rodrigo M. R. de Medeiros <\email{rodrigo.matheus@live.com}>
-
-Diego R. Canterle <\email{diegocanterle@gmail.com}>
 }
