@@ -53,21 +53,6 @@ ug_control <- function(method = "BFGS", maxit = 5000, start = NULL,
 }
 
 
-## Maximum likelihood estimation
-#' Title
-#'
-#' @param y
-#' @param X
-#' @param Z
-#' @param link
-#' @param sigma.link
-#' @param control
-#' @param ...
-#'
-#' @return
-#' @export
-#'
-#' @examples
 ug_mle <- function(y, X, Z = NULL, link = "aordaz", sigma.link = NULL,
                    control = ug_control(...), ...)
 {
