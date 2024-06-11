@@ -2,6 +2,8 @@
 ll_ug <- function(par, y, X, Z, link = "aordaz", sigma.link = "aordaz")
 {
 
+  EPS <- .Machine$double.eps^(1/1.5)
+
   k <- ncol(X); l <- ncol(Z); n <- length(y)
 
   beta <- as.vector(par[1:k])
@@ -18,8 +20,9 @@ ll_ug <- function(par, y, X, Z, link = "aordaz", sigma.link = "aordaz")
   mu <- make.plink(link)$linkinv(X%*%beta, lambda1)
   sigma <- make.plink(sigma.link)$linkinv(Z%*%gamma, lambda2)
 
-  if (any(mu <= 0) | any(mu >= 1) | any(sigma <= 0) | any(sigma >= 1) |
-      any(lambda1 < 0) | any(lambda2 < 0)){
+  if (any(mu <= EPS) | any(mu >= 1 - EPS) |
+      any(sigma <= EPS) | any(sigma >= 1 - EPS) |
+      any(lambda1 < EPS) | any(lambda2 < EPS)){
     NaN
   }else{
     ll <- suppressWarnings(dugamma(y, mu, sigma, log.p = TRUE))
@@ -35,7 +38,10 @@ ll_ug <- function(par, y, X, Z, link = "aordaz", sigma.link = "aordaz")
 ## Score function ----
 U_ug <- function(par, y, X, Z, link = "aordaz", sigma.link = "aordaz")
 {
-  k <- ncol(X); l <- ncol(Z); n <- length(y)
+
+  k <- ncol(X)
+  l <- ncol(Z)
+  n <- length(y)
 
   beta <- as.vector(par[1:k])
   gamma <- as.vector(par[1:l + k])
@@ -53,32 +59,35 @@ U_ug <- function(par, y, X, Z, link = "aordaz", sigma.link = "aordaz")
   mu <- g(link)$linkinv(X%*%beta, lambda1)
   sigma <- g(sigma.link)$linkinv(Z%*%gamma, lambda2)
 
-  phi <- as.vector(((1-(sigma^2))/(sigma^2)))
-  mu_star <- mu^(1/phi)
-  d <- (mu_star)/(1-mu_star)
+  phi <- 1 / sigma^2 - 1
+  mu_star <- mu^(1 / phi)
+  y_star <- 1 + mu_star * log(y) * sigma^2 / (1 - sigma^2)
+  d <- mu_star / (1 - mu_star)
+  mu_dag <- digamma(phi) - log(d)
+  y_dag <- log(-log(y))
 
-  T1 <- diag(as.vector(g(link)$mu.eta(X%*%beta, lambda1)))
-  T2 <- diag(as.vector(g(sigma.link)$mu.eta(Z%*%gamma, lambda2)))
-  a1 <- (1 - mu_star - (sigma^2 * mu_star * log(y)) /
-           (sigma^2 - 1))/(mu * (1-mu_star)^2)
-  a2 <- (2 * log(mu) *
-           (mu_star * (sigma^2 + sigma^2 * log(y) - 1) + 1 - sigma^2)) /
-    ((1-sigma^2)^2 * sigma * (1-mu_star)^2) +
-    2 * (digamma(phi) - log(-log(y)) - log(d)) / sigma^3
+  T1 <- diag(c(g(link)$mu.eta(X%*%beta, lambda1)))
+  T2 <- diag(c(g(sigma.link)$mu.eta(Z%*%gamma, lambda2)))
 
-  Ub <- t(X) %*% T1 %*% a1
-  Ug <- t(Z) %*% T2 %*% a2
+  a <- 1 / (mu * (1 - mu_star)^2)
+  b <- 2 * mu * log(mu) / (sigma * (1 - sigma^2))
+
+  dldmu <- a * (y_star - mu_star)
+  dldsigma <- a * b * (y_star - mu_star) - 2 * (y_dag - mu_dag) / sigma^3
+
+  Ub <- t(X) %*% T1 %*% dldmu
+  Ug <- t(Z) %*% T2 %*% dldsigma
 
   if (g(link)$plink == TRUE){
     rho1 <- g(link)$rho(X%*%beta, lambda1)
-    Ul1 <- sum(rho1 * a1)
+    Ul1 <- sum(rho1 * dldmu)
   }else{
     Ul1 <- NULL
   }
 
   if (g(sigma.link)$plink == TRUE){
     rho2 <- g(sigma.link)$rho(Z%*%gamma, lambda2)
-    Ul2 <- sum(rho2 * a2)
+    Ul2 <- sum(rho2 * dldsigma)
   }else{
     Ul2 <- NULL
   }
@@ -89,7 +98,9 @@ U_ug <- function(par, y, X, Z, link = "aordaz", sigma.link = "aordaz")
 ## Fisher information matrix ----
 K_ug <- function(par, X, Z, link = "aordaz", sigma.link = "aordaz", inverse = FALSE)
 {
-  k <- ncol(X); l <- ncol(Z)
+
+  k <- ncol(X)
+  l <- ncol(Z)
 
   beta <- as.vector(par[1:k])
   gamma <- as.vector(par[1:l + k])
@@ -107,67 +118,80 @@ K_ug <- function(par, X, Z, link = "aordaz", sigma.link = "aordaz", inverse = FA
   mu <- g(link)$linkinv(X%*%beta, lambda1)
   sigma <- g(sigma.link)$linkinv(Z%*%gamma, lambda2)
 
-  phi <- as.vector(((1-(sigma^2))/(sigma^2)))
+  phi <- 1 / sigma^2 - 1
   mu_star <- mu^(1/phi)
 
   T1 <- diag(as.vector(g(link)$mu.eta(X%*%beta, lambda1)))
   T2 <- diag(as.vector(g(sigma.link)$mu.eta(Z%*%gamma, lambda2)))
-  a <- 1/(mu*((1-mu_star)^2))
-  b <- 2*mu*log(mu)/(sigma*(1-sigma^2))
+  a <- 1 / (mu * (1-mu_star)^2)
+  b <- 2 * mu * log(mu) / (sigma * (1 - sigma^2))
 
-  W <- diag(c( (a^2*sigma^2*(1-mu_star)^2/(1-sigma^2)) *((g(link)$mu.eta(X%*%beta, (lambda1)) )^2) ))
-  C <- diag(c( (a/(1-sigma^2))*( 2*(1-mu_star)/sigma + b*(sigma^2)/mu ) ))
-  V <- diag(c( a^2*sigma^2*(1-mu_star)^2/(1-sigma^2) ))
-  Q <- diag(c( (4/(sigma^6))*(trigamma(phi)) +
-                 a^2*b^2*sigma^2*((1-mu_star)^2)/(1-sigma^2)+
-                 4*a*b*(1-mu_star)/(sigma*(1-sigma^2)) ))
+  V <- diag(c( a^2 * sigma^2 * (1 - mu_star)^2 / (1 - sigma^2) ))
 
-  Kbb <- t(X)%*%W%*%X
+  C <- diag(c( a * (2 * (1 - mu_star) / sigma + b * sigma^2 / mu) / (1 - sigma^2) ))
+
+  Q <- diag(c( 4 * trigamma(phi) / sigma^6 +
+                 a^2 * b^2 * sigma^2 * (1 - mu_star)^2 / (1 - sigma^2) +
+                 4 * a * b * (1 - mu_star) / (sigma * (1 - sigma^2)) ))
+
+  Kbb <- t(X)%*%V%*%T1%*%T1%*%X
   Kbg <- t(X)%*%C%*%T1%*%T2%*%Z
   Kgb <- t(Kbg)
   Kgg <- t(Z)%*%Q%*%T2%*%T2%*%Z
 
   if (g(link)$plink){
-    eta1 <- X%*%beta
+
     rho1 <- g(link)$rho(X%*%beta, lambda1)
+
     Kbl1 <- t(X)%*%V%*%T1%*%rho1
     Kl1b <- t(Kbl1)
     Kgl1 <- t(Z)%*%C%*%T2%*%rho1
     Kl1g <- t(Kgl1)
     Kl1l1 <- t(rho1)%*%V%*%rho1
     ind_l1 <- 1
+
   }else{
+
     Kbl1 <- Kl1b <- Kgl1 <- Kl1g <-Kl1l1 <- NULL
     ind_l1 <- 0
+
   }
 
   if (g(sigma.link)$plink){
-    eta2 <- Z%*%gamma
+
     rho2 <- g(sigma.link)$rho(Z%*%gamma, lambda2)
+
     Kbl2 <- t(X)%*%C%*%T1%*%rho2
     Kl2b <- t(Kbl2)
     Kgl2 <- t(Z)%*%Q%*%T2%*%rho2
     Kl2g <- t(Kgl2)
     Kl2l2 <- t(rho2)%*%Q%*%rho2
     ind_l2 <- 1
+
   }else{
+
     Kbl2 <- Kl2b <- Kgl2 <- Kl2g <-Kl2l2 <- NULL
     ind_l2 <- 0
+
   }
 
   if (ind_l1 == 1 && ind_l2 == 1){
+
     Kl1l2 <- t(rho1)%*%C%*%rho2
     Kl2l1 <- t(Kl1l2)
+
   }else{
+
     Kl1l2 <- Kl2l1 <- NULL
+
   }
 
-  K <- rbind(cbind(Kbb,Kbg,Kbl1,Kbl2),
-             cbind(Kgb,Kgg,Kgl1,Kgl2),
-             cbind(Kl1b,Kl1g,Kl1l1,Kl1l2),
-             cbind(Kl2b,Kl2g,Kl2l1,Kl2l2))
+  K <- rbind(cbind(Kbb,  Kbg,  Kbl1,  Kbl2),
+             cbind(Kgb,  Kgg,  Kgl1,  Kgl2),
+             cbind(Kl1b, Kl1g, Kl1l1, Kl1l2),
+             cbind(Kl2b, Kl2g, Kl2l1, Kl2l2))
 
-  if(!inverse) K else chol2inv(chol(K))
+  if(!inverse) K else chol2inv(Rfast::cholesky(K))
 
 }
 
