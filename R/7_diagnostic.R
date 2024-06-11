@@ -1,285 +1,8 @@
-# Normal probability plot with simulated envelope --------------------------------------------------
-
-#' @name envelope
-#'
-#' @title Normal Probability Plot with Simulated Envelope
-#'
-#' @description Provides the normal probability plot with simulated envelope of the residuals
-#'     resulting from the fit of the unit gamma regression with parametric link function.
-#'
-#' @param object,x an \code{"ugrpl"} object.
-#' @param type character; specifies which residual should be produced in the
-#'     envelope plot. The available options are \code{"quantile"} (default),
-#'     \code{"pearson"}, \code{"response"} (raw residuals, y - mu), and \code{"deviance"}.
-#' @param nsim the number of replicates. The default is \code{nsim = 99}.
-#' @param level confidence level for the construction of the confidence bands.
-#' @param plot 	logical. If \code{TRUE} (the default) the graph is plotted.
-#' @param progressBar logical; if \code{TRUE}, a progress bar is displayed giving
-#'     the progress of making the graph. It can slow down the function
-#'     considerably in applications with a large sample size.
-#' @param ... further arguments passed to or from other methods.
-#'
-#' @return \code{envelope} returns an \code{"envelope"} object witch consists of
-#'     a list with the following components:
-#' \describe{
-#'   \item{residuals}{a list with the quantile, pearson, raw, and deviance residuals resulting from
-#'     the fit of the unit gamma regression with parametric link function.}
-#'   \item{simulation}{a list whose components are matrices containing the
-#'       ordered quantile, pearson, raw, and deviance residuals of the simulation for the
-#'       envelope plot.}
-#'
-#'  The method \code{plot} makes the envelope plot.
-#'  }
-#'
-NULL
-
-#' @rdname envelope
-#' @export
-envelope <- function(object, type = c("quantile", "pearson",
-                                      "response", "deviance"),
-                     nsim = 99, level = 0.95, plot = TRUE, progressBar = TRUE, ...)
-{
-
-  type <- match.arg(type, c("quantile", "pearson", "response", "deviance"))
-
-  ## Model specifications
-  y <- if(is.null(object$y)) stats::model.response(stats::model.frame(object)) else object$y
-  X <- stats::model.matrix(object, model = "mean")
-  Z <- stats::model.matrix(object, model = "dispersion")
-
-  k <- NCOL(X)
-  l <- NCOL(Z)
-  n <- object$nobs
-
-  link <- object$link$mean
-  sigma.link <- object$link$dispersion
-
-  ## Fitted means and dispersions
-  mu <- object$fitted.values
-  sigma <- object$sigma
-
-  ## Residuals
-  rq <- stats::residuals(object, type = "quantile")
-  rp <- stats::residuals(object, type = "pearson")
-  rr <- stats::residuals(object, type = "response")
-  rd <- stats::residuals(object, type = "deviance")
-
-  ## Envelope
-  rq_s <- matrix(0, n, nsim)
-  rp_s <- matrix(0, n, nsim)
-  rr_s <- matrix(0, n, nsim)
-  rd_s <- matrix(0, n, nsim)
-
-  pb <- utils::txtProgressBar(1, nsim, style = 3)
-  for(i in 1:nsim){
-
-    error <- TRUE
-    while(error){
-
-      # Simulated sample
-      y.tilde <- rugamma(n, mu, sigma)
-
-      # Estimatives
-      ctrl <- object$control
-      ctrl$hessian <- FALSE
-      ctrl$start <- c(object$coefficients$mean,
-                      object$coefficients$dispersion,
-                      object$lambda$lambda1,
-                      object$lambda$lambda2)
-
-      fit <- try(ug_mle(y.tilde, X, Z, link = link, sigma.link = sigma.link, control = ctrl), silent = TRUE)
-
-      if (unique(grepl("Error", fit))){
-        error.fit <- TRUE
-      }else{
-        error.fit <- fit$convergence != 0
-      }
-
-      ## Coefficients
-      beta <- fit$par[1:k]
-      gamma <- fit$par[1:l + k]
-
-      ## Lambdas
-      lambda1 <- NULL
-      lambda2 <- NULL
-      nlambdas <- length(fit$par) - k - l
-      g <- make.plink
-      if (g(link)$plink == TRUE) lambda1 <-  as.numeric(fit$par[k + l + 1])
-      if (g(sigma.link)$plink == TRUE) lambda2 <- as.numeric(fit$par[k + l + nlambdas])
-
-      mu <- g(link)$linkinv(X%*%beta, lambda1)
-      sigma <- g(sigma.link)$linkinv(Z%*%gamma, lambda2)
-      phi <- 1 / sigma^2 - 1
-
-      error.pearson <- any(mu * ((1 / (2 - mu^(1 / phi))^phi) - mu) < 0)
-
-      error <- error.fit | error.pearson
-
-
-    }
-
-    ## Fitted values
-    fit$fitted.values <- g(link)$linkinv(X%*%beta, lambda1)
-    fit$sigma <- g(sigma.link)$linkinv(Z%*%gamma, lambda2)
-
-    fit$residuals <- y.tilde - fit$fitted.values
-    fit$y <- y.tilde
-
-    class(fit) <- "ugrpl"
-
-    # Empirical residuals
-    rq_s[, i] <- sort(stats::residuals(fit, type = "quantile"))
-    rp_s[, i] <- sort(stats::residuals(fit, type = "pearson"))
-    rr_s[, i] <- sort(y.tilde - fit$fitted.values)
-    rd_s[, i] <- sort(stats::residuals(fit, type = "deviance"))
-
-    if(progressBar){ utils::setTxtProgressBar(pb, i)}
-  }
-
-  if(plot){
-
-    switch (type,
-            quantile = {
-              res <- rq
-              rs <- rq_s
-            },
-
-            pearson = {
-              res <- rp
-              rs <- rp_s
-            },
-
-            response = {
-              res <- rr
-              rs <- rr_s
-            },
-
-            deviance = {
-              res <- rd
-              rs <- rd_s
-            }
-    )
-
-    ## Legends
-    types <- c("quantile", "pearson", "response", "deviance")
-    Types <- c("Quantile residuals", "Pearson residuals",
-               "Raw response residuals", "Deviance residuals")
-    Type <- Types[type == types]
-
-    alpha <- (1 - level)/2
-
-    # alpha and 1 - alpha quantiles
-    lower <- apply(rs, 1, stats::quantile, probs = alpha)
-    upper <- apply(rs, 1, stats::quantile, probs = 1 - alpha)
-
-    # Median
-    md <- apply(rs, 1, stats::quantile, probs = 0.5)
-
-    # Theoretical quantiles for the normal distribution
-    qq <- stats::qqnorm(1:n, axes = FALSE, xlab = " ", ylab = " ",
-                        type = "l", lty = 1, plot.it = FALSE)$x
-
-    gp <- cbind(qq, sort(res), md, lower, upper)
-
-    graphics::plot(gp[,1], gp[,2], xlab = "Normal quantiles", ylab = Type, type = "n", ...)
-    graphics::polygon (c(gp[,1], sort(gp[,1], decreasing = T)),
-                       c(gp[,4], sort(gp[,5], decreasing = T)), col = "lightgray", border = NA, ...)
-    graphics::lines(gp[,1], gp[,3], lty = 2)
-    graphics::points(gp[,1], gp[,2], pch = "+", cex = 0.9, ...)
-    graphics::box()
-
-  }
-
-
-  out <- list(residuals = list(quantile = rq,
-                               pearson = rp,
-                               response = rr,
-                               deviance = rd),
-              simulation = list(quantile = rq_s,
-                                pearson = rp_s,
-                                response = rr_s,
-                                deviance = rd_s))
-
-  class(out) <- "envelope"
-  out
-
-
-}
-
-
-#' @rdname envelope
-#' @export
-print.envelope <- function(x, ...){
-  cat("\nAn 'envelope' object\n\n")
-  utils::str(x)
-}
-
-#' @rdname envelope
-#' @export
-plot.envelope <- function(x, type = c("quantile", "pearson", "response", "deviance"), level = 0.95, ...){
-
-  alpha <- (1 - level) / 2
-  type <- match.arg(type, c("quantile", "pearson", "response", "deviance"))
-
-  switch (type,
-          quantile = {
-            res <- x$residuals$quantile
-            rs <- x$simulation$quantile
-          },
-
-          pearson = {
-            res <- x$residuals$pearson
-            rs <- x$simulation$pearson
-          },
-
-          response = {
-            res <- x$residuals$response
-            rs <- x$simulation$response
-          },
-
-          deviance = {
-            res <- x$residuals$deviance
-            rs <- x$simulation$deviance
-          }
-  )
-
-  ## Legends
-  types <- c("quantile", "pearson", "response", "deviance")
-  Types <- c("Quantile residuals", "Pearson residuals",
-             "Raw response residuals", "Deviance residuals")
-  Type <- Types[type == types]
-
-  n <- length(res)
-
-  # alpha and 1 - alpha quantiles
-  lower <- apply(rs, 1, stats::quantile, probs = alpha)
-  upper <- apply(rs, 1, stats::quantile, probs = 1 - alpha)
-
-  # Median
-  md <- apply(rs, 1, stats::quantile, probs = 0.5)
-
-  gp <- cbind(stats::qnorm(stats::ppoints(n)), sort(res), md, lower, upper)
-
-  # dots <- list(...)
-  #
-  # if(is.null(dots$pch)) dots$pch <- "+"
-  # if(is.null(dots$col)) dots$col <- "lightgray"
-  # if(is.null(dots$border)) dots$border <- NA
-
-  graphics::plot(gp[,1], gp[,2], xlab = "Normal quantiles", ylab = Type, type = "n", ...)
-  graphics::polygon (c(gp[,1], sort(gp[,1], decreasing = T)),
-                     c(gp[,4], sort(gp[,5], decreasing = T)), col = "lightgray", border = NA, ...)
-  graphics::lines(gp[,1], gp[,3], lty = 2)
-  graphics::points(gp[,1], gp[,2], pch = "+", cex = 0.9, ...)
-  graphics::box()
-
-  invisible(x)
-
-}
-
 # Influence ----------------------------------------------------------------------------------------
 
-#' Title
+#' Leverage and Local Influence for the Unit Gamma Regression
+#'
+#'
 #'
 #' @param object an \code{"ugrpl"} object.
 #' @param scheme character; it specifies the perturbation scheme. Currently, the following
@@ -294,7 +17,8 @@ plot.envelope <- function(x, type = c("quantile", "pearson", "response", "devian
 #'     second element is the name of the perturbed covariate associated with the dispersion.
 #'     If \code{scheme = "mean"} or \code{scheme = "dispersion"}, then the mean and dispersion
 #'     submodels cannot share the same perturbed covariate.
-#' @param plot 	logical. If \code{TRUE} (the default) the graph is plotted.
+#' @param plot 	logical. If \code{TRUE}, the graphs of local influence and generalized leverage for each
+#'      sampled observation are presented.
 #' @param ask logical. If \code{TRUE}, the user is asked before each plot.
 #' @param ... further arguments passed \link{plot}.
 #'
@@ -305,6 +29,28 @@ plot.envelope <- function(x, type = c("quantile", "pearson", "response", "devian
 #'   \item{scheme}{name of the considered perturbation scheme}
 #'   \item{leverage}{the diagonal elements of the generalized leverage matrix.}
 #'  }
+#'
+#' @details
+#' Leverage points are observations that have a disproportionate weight in their fitted value.
+#'     These points, in general, present a different behavior from the other points in relation
+#'     to the values of the explanatory variables and can strongly influence the estimates of the
+#'     regression coefficients. On the other hand, local influence analysis should be considered
+#'     when there is an interest in investigating the sensitivity of postulated assumptions under
+#'     small perturbations in the model or data.
+#'
+#' The leverage measure considered is based on the work of Wei et al. (1998) and local influence
+#'     perturbation schemes are commonly considered schemes, see, for instance Cook (1986).
+#'
+#' @references
+#'
+#' Cook, R. D. (1986). Assessment of local influence. \emph{Journal of the Royal Statistical
+#'     Society  B}, \bold{48}, 133--155.
+#'
+#' Wei, B. C., Hu, Y. Q., & Fung, W. K. (1998). Generalized leverage and its applications.
+#'     \emph{Scandinavian Journal of Statistics}, \bold{25}, 25--37.
+#'
+#'
+#' @author Rodrigo M. R. de Medeiros <\email{rodrigo.matheus@live.com}>
 #'
 #' @export
 #'
@@ -326,8 +72,8 @@ influence <- function(object,
   l <- NCOL(Z)
   n <- length(y)
 
-  link <- object$link$mean
-  sigma.link <- object$link$dispersion
+  link <- object$link
+  sigma.link <- object$sigma.link
 
   ## Fitted means and dispersions
   mu <- object$fitted.values
@@ -592,7 +338,6 @@ influence <- function(object,
 
   if(plot == TRUE){
     plot(d_max, type = "h", main = Scheme, las = 1, xlab = "Index", ylab = "Local influence", ...)
-    plot(totalLI, type = "h", main = Scheme, las = 1, xlab = "Index", ylab = "Total local influence")
     plot(GL, type = "h", las = 1, cex = 0.8, main = "Generalized leverage", xlab = "Index", ylab = expression(GL[ii]), ...)
   }
 
@@ -695,7 +440,7 @@ plot.ugrpl <- function(x,
   ## Generalized leverage
   if(show[5]){
     inf <- influence(x, plot = FALSE)
-    plot(inf$generalized.leverage, type = "h", las = 1, cex = 0.8,
+    plot(inf$leverage, type = "h", las = 1, cex = 0.8,
          main = "Generalized leverage", xlab = "Index", ylab = expression(GL[ii]), ...)
   }
 
@@ -746,8 +491,8 @@ reset <- function(object){
   X <- cbind(stats::model.matrix(object$terms$mean, stats::model.frame(object)), eta^2)
   Z <- cbind(stats::model.matrix(object$terms$dispersion, stats::model.frame(object)), eta^2)
 
-  link <- object$link$mean
-  sigma.link <- object$link$dispersion
+  link <- object$link
+  sigma.link <- object$sigma.link
 
   # Initial values for the new fit
   inits <- c(object$coefficients$mean, 0L, object$coefficients$dispersion, 0L)

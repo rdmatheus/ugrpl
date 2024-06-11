@@ -2,7 +2,7 @@
 % Please edit documentation in R/7_diagnostic.R
 \name{influence}
 \alias{influence}
-\title{Title}
+\title{Leverage and Local Influence for the Unit Gamma Regression}
 \usage{
 influence(
   object,
@@ -30,7 +30,8 @@ second element is the name of the perturbed covariate associated with the disper
 If \code{scheme = "mean"} or \code{scheme = "dispersion"}, then the mean and dispersion
 submodels cannot share the same perturbed covariate.}
 
-\item{plot}{logical. If \code{TRUE} (the default) the graph is plotted.}
+\item{plot}{logical. If \code{TRUE}, the graphs of local influence and generalized leverage for each
+sampled observation are presented.}
 
 \item{ask}{logical. If \code{TRUE}, the user is asked before each plot.}
 
@@ -46,5 +47,26 @@ A list containing the following components:
  }
 }
 \description{
-Title
+Leverage and Local Influence for the Unit Gamma Regression
+}
+\details{
+Leverage points are observations that have a disproportionate weight in their fitted value.
+    These points, in general, present a different behavior from the other points in relation
+    to the values of the explanatory variables and can strongly influence the estimates of the
+    regression coefficients. On the other hand, local influence analysis should be considered
+    when there is an interest in investigating the sensitivity of postulated assumptions under
+    small perturbations in the model or data.
+
+The leverage measure considered is based on the work of Wei et al. (1998) and local influence
+    perturbation schemes are commonly considered schemes, see, for instance Cook (1986).
+}
+\references{
+Cook, R. D. (1986). Assessment of local influence. \emph{Journal of the Royal Statistical
+    Society  B}, \bold{48}, 133--155.
+
+Wei, B. C., Hu, Y. Q., & Fung, W. K. (1998). Generalized leverage and its applications.
+    \emph{Scandinavian Journal of Statistics}, \bold{25}, 25--37.
+}
+\author{
+Rodrigo M. R. de Medeiros <\email{rodrigo.matheus@live.com}>
 }
