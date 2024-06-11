@@ -138,6 +138,862 @@
 #'
 #'
 #'
+
+# make.plink <- function(link)
+# {
+#   switch(link,
+#
+#          # Logit ------------------------------------------------------------------------------------------
+#          logit = {
+#
+#            linkfun <- function(mu, lambda = NULL, ...) stats::qlogis(mu)
+#
+#            linkinv <- function(eta, lambda = NULL) stats::plogis(eta)
+#
+#            mu.eta <- function(eta, lambda = NULL) stats::dlogis(eta)
+#
+#            mu2.eta2 <- function(eta, lambda = NULL) - stats::dlogis(eta) * (1 - exp(-eta)) / (1 + exp(-eta))
+#
+#            rho <- function(eta, lambda = NULL) NULL
+#
+#            rho2 <- function(eta, lambda = NULL) NULL
+#
+#            rho.eta <- function(eta, lambda = NULL) NULL
+#
+#            plink <- FALSE
+#
+#            name <- "logit"
+#
+#          },
+#
+#          # Probit -----------------------------------------------------------------------------------------
+#          probit = {
+#
+#            linkfun <- function(mu, lambda = NULL, ...) stats::qnorm(mu)
+#
+#            linkinv <- function(eta, lambda = NULL) stats::pnorm(eta)
+#
+#            mu.eta <- function(eta, lambda = NULL) stats::dnorm(eta)
+#
+#            mu2.eta2 <- function(eta, lambda = NULL) -eta * stats::dnorm(eta)
+#
+#            rho <- function(eta, lambda = NULL) NULL
+#
+#            rho2 <- function(eta, lambda = NULL) NULL
+#
+#            rho.eta <- function(eta, lambda = NULL) NULL
+#
+#            plink <- FALSE
+#
+#            name <- "probit"
+#          },
+#
+#          # Cauchit ----------------------------------------------------------------------------------------
+#          cauchit = {
+#
+#            linkfun <- function(mu, lambda = NULL, ...) stats::qcauchy(mu)
+#
+#            linkinv <- function(eta, lambda = NULL) stats::pcauchy(eta)
+#
+#            mu.eta <- function(eta, lambda = NULL) stats::dcauchy(eta)
+#
+#            mu2.eta2 <- function(eta, lambda = NULL) - 2 * eta * stats::dcauchy(eta) / (1 + eta^2)
+#
+#            rho <- function(eta, lambda = NULL) NULL
+#
+#            rho2 <- function(eta, lambda = NULL) NULL
+#
+#            rho.eta <- function(eta, lambda = NULL) NULL
+#
+#            plink <- FALSE
+#
+#            name <- "cauchit"
+#          },
+#
+#          # Log-log ----------------------------------------------------------------------------------------
+#          loglog = {
+#
+#            linkfun <- function(mu, lambda = NULL, ...) -log(-log(mu))
+#
+#            linkinv <- function(eta, lambda = NULL) pmax(pmin(exp(-exp(-eta)), 1 - .Machine$double.eps), .Machine$double.eps)
+#
+#            mu.eta <- function(eta, lambda = NULL) exp(-eta - exp(-eta))
+#
+#            mu2.eta2 <- function(eta, lambda = NULL) exp(-2 * eta - exp(-eta)) * (1 - exp(eta))
+#
+#            rho <- function(eta, lambda = NULL) NULL
+#
+#            rho2 <- function(eta, lambda = NULL) NULL
+#
+#            rho.eta <- function(eta, lambda = NULL) NULL
+#
+#            plink <- FALSE
+#
+#            name <- "complement log-log"
+#          },
+#
+#          # Complement log-log -----------------------------------------------------------------------------
+#          cloglog = {
+#
+#            linkfun <- function(mu, lambda = NULL, ...) log(-log(1 - mu))
+#
+#            linkinv <- function(eta, lambda = NULL) pmax(pmin(-expm1(-exp(eta)), 1 - .Machine$double.eps), .Machine$double.eps)
+#
+#            mu.eta <- function(eta, lambda = NULL) exp(eta - exp(eta))
+#
+#            mu2.eta2 <- function(eta, lambda = NULL)  exp(eta - exp(eta)) * (1 - exp(eta))
+#
+#            rho <- function(eta, lambda = NULL) NULL
+#
+#            rho2 <- function(eta, lambda = NULL) NULL
+#
+#            rho.eta <- function(eta, lambda = NULL) NULL
+#
+#            plink <- FALSE
+#
+#            name <- "complement log-log"
+#          },
+#
+#          # Identity ---------------------------------------------------------------------------------------
+#          identity = {
+#
+#            linkfun <- function(mu, lambda = NULL, ...) mu
+#
+#            linkinv <- function(eta, lambda = NULL) eta
+#
+#            mu.eta <- function(eta, lambda = NULL) rep.int(1, length(eta))
+#
+#            mu2.eta2 <- function(eta, lambda = NULL) rep.int(0, length(eta))
+#
+#            rho <- function(eta, lambda = NULL) NULL
+#
+#            rho2 <- function(eta, lambda = NULL) NULL
+#
+#            rho.eta <- function(eta, lambda = NULL) NULL
+#
+#            plink <- FALSE
+#
+#            name <- "identity"
+#          },
+#
+#          # Aranda-Ordaz ------------------------------------------------------------------------
+#          aordaz = {
+#
+#            linkfun <- function(mu, lambda, ...) log( ((1 - mu)^(-lambda) - 1) / lambda )
+#
+#
+#            linkinv <- function(eta, lambda) 1 - (1 + lambda * exp(eta))^(-1 / lambda)
+#
+#            mu.eta <- function(eta, lambda) exp(eta) * (1 + lambda * exp(eta))^(-1 - 1 / lambda)
+#
+#            mu2.eta2 <- function(eta, lambda) exp(eta) * (1 - (1 + lambda) / (exp(-eta) + lambda)) /
+#              ((1 + lambda * exp(eta))^(1 + 1 / lambda))
+#
+#            rho <- function(eta, lambda){
+#
+#              eta <- pmin(pmax(eta, -.Machine$double.xmax), .Machine$double.xmax)
+#              e <- pmin(pmax(exp(eta), -.Machine$double.xmax), .Machine$double.xmax)
+#
+#              (1 / (exp(-eta) + lambda) - log1p(lambda * e) / lambda) /
+#                (lambda * (1 + lambda * e)^(1/lambda))
+#            }
+#
+#            rho2 <- function(eta, lambda){
+#
+#              eta <- pmin(pmax(eta, -.Machine$double.xmax), .Machine$double.xmax)
+#              e <- pmin(pmax(exp(eta), -.Machine$double.xmax), .Machine$double.xmax)
+#
+#              (2 * log(e * lambda + 1) / (lambda^3)  -
+#                  2 * e / (lambda^2 * (e * lambda + 1)) -
+#                  exp(2 * eta) / (lambda * (e * lambda + 1)^2) -
+#                  (log(e * lambda + 1) / (lambda^2) - e / (lambda * (e * lambda + 1)))^2) /
+#                ((e * lambda + 1)^(1 / lambda))
+#            }
+#
+#            rho.eta <- function(eta, lambda){
+#
+#              eta <- pmin(pmax(eta, -.Machine$double.xmax), .Machine$double.xmax)
+#              e <- pmin(pmax(exp(eta), -.Machine$double.xmax), .Machine$double.xmax)
+#
+#              e * (log1p(e * lambda) / lambda - (1 + lambda) / (exp(-eta) + lambda)) /
+#                (lambda * (1 + e * lambda)^(1 / lambda + 1))
+#
+#            }
+#
+#            plink <- TRUE
+#
+#            name <- "Aranda-Ordaz"
+#
+#          },
+#
+#          # Power link functions --------------------------------------------------------------------
+#
+#          ## Power logit ------------------------------------------------------------------------
+#          plogit = {
+#
+#            linkfun <- function(mu, lambda, ...) stats::qlogis(mu^(1 / lambda))
+#
+#            linkinv <- function(eta, lambda) stats::plogis(eta)^lambda
+#
+#            mu.eta <- function(eta, lambda){
+#
+#              g <- stats::plogis(eta)
+#              g. <- stats::dlogis(eta)
+#              lambda * g^(lambda - 1) * g.
+#
+#            }
+#
+#            mu2.eta2 <- function(eta, lambda) {
+#
+#              g <- stats::plogis(eta)
+#              g. <- stats::dlogis(eta)
+#              g.. <- g. * (1 - exp(-eta)) / (1 + exp(-eta))
+#              lambda * ((lambda - 1) * g^(lambda - 2) * g.^2 + g^(lambda - 1) * g..)
+#
+#            }
+#
+#            rho <- function(eta, lambda){
+#
+#              g <- stats::plogis(eta)
+#              g^lambda * log(g)
+#
+#            }
+#
+#            rho2 <- function(eta, lambda){
+#
+#              g <- stats::plogis(eta)
+#              g^lambda  * (log(g))^2
+#
+#            }
+#
+#            rho.eta <- function(eta, lambda){
+#
+#              g <- stats::plogis(eta)
+#              g. <- stats::dlogis(eta)
+#              g. * g^(lambda  - 1) * (lambda  * log(g) + 1)
+#
+#            }
+#
+#            plink <- TRUE
+#
+#            name <- "power logit"
+#          },
+#
+#          # Power probit -----------------------------------------------------------------------------------
+#          pprobit = {
+#
+#            linkfun <- function(mu, lambda, ...) stats::qnorm(mu^(1/lambda))
+#
+#            linkinv <- function(eta, lambda) stats::pnorm(eta)^lambda
+#
+#            mu.eta <- function(eta, lambda){
+#
+#              g <- stats::pnorm(eta)
+#              g. <- stats::dnorm(eta)
+#
+#              lambda * g^(lambda - 1) * g.
+#
+#            }
+#
+#            mu2.eta2 <- function(eta, lambda) {
+#
+#              g <- stats::pnorm(eta)
+#              g. <- stats::dnorm(eta)
+#              g.. <- -eta * g.
+#
+#              lambda * ((lambda - 1) * g^(lambda - 2) * g.^2 + g^(lambda - 1) * g..)
+#
+#            }
+#
+#            rho <- function(eta, lambda){
+#
+#              g <- stats::pnorm(eta)
+#
+#              g^lambda * log(g)
+#
+#            }
+#
+#            rho2 <- function(eta, lambda){
+#
+#              g <- stats::pnorm(eta)
+#
+#              g^lambda  * (log(g))^2
+#
+#            }
+#
+#            rho.eta <- function(eta, lambda){
+#
+#              g <- stats::pnorm(eta)
+#              g. <- stats::dnorm(eta)
+#
+#              g. * g^(lambda  - 1) * (lambda  * log(g) + 1)
+#
+#            }
+#
+#            plink <- TRUE
+#
+#            name <- "power probit"
+#          },
+#
+#          # Power cauchit -----------------------------------------------------------------------------------
+#          pcauchit = {
+#
+#            linkfun <- function(mu, lambda, ...) stats::qcauchy(mu^(1 / lambda))
+#
+#            linkinv <- function(eta, lambda) stats::pcauchy(eta)^lambda
+#
+#            mu.eta <- function(eta, lambda){
+#
+#              g <- stats::pcauchy(eta)
+#              g. <- stats::dcauchy(eta)
+#
+#              lambda * g^(lambda - 1) * g.
+#
+#            }
+#
+#            mu2.eta2 <- function(eta, lambda) {
+#
+#              g <- stats::pcauchy(eta)
+#              g. <- stats::dcauchy(eta)
+#              g.. <- - 2 * eta * g. / (1 + eta^2)
+#
+#              lambda * ((lambda - 1) * g^(lambda - 2) * g.^2 + g^(lambda - 1) * g..)
+#
+#            }
+#
+#            rho <- function(eta, lambda){
+#
+#              g <- stats::pcauchy(eta)
+#
+#              g^lambda * log(g)
+#
+#            }
+#
+#            rho2 <- function(eta, lambda){
+#
+#              g <- stats::pcauchy(eta)
+#
+#              g^lambda  * (log(g))^2
+#
+#            }
+#
+#            rho.eta <- function(eta, lambda){
+#
+#              g <- stats::pcauchy(eta)
+#              g. <- stats::dcauchy(eta)
+#
+#              g. * g^(lambda  - 1) * (lambda  * log(g) + 1)
+#
+#            }
+#
+#            plink <- TRUE
+#
+#            name <- "power cauchit"
+#          },
+#
+#          # Power log-log -----------------------------------------------------------------------------------
+#          ploglog = {
+#
+#            linkfun <- function(mu, lambda, ...) -log(-log(mu^(1 / lambda)))
+#
+#            linkinv <- function(eta, lambda) pmax(pmin(exp(-exp(-eta))^lambda, 1 - .Machine$double.eps), .Machine$double.eps)
+#
+#            mu.eta <- function(eta, lambda){
+#
+#              g <- exp(-exp(-eta))
+#              g. <- exp(-exp(-eta) - eta)
+#
+#              lambda * g^(lambda - 1) * g.
+#
+#            }
+#
+#            mu2.eta2 <- function(eta, lambda) {
+#
+#              g <- exp(-exp(-eta))
+#              g. <- exp(-exp(-eta) - eta)
+#              g.. <- exp(-2 * eta - exp(-eta)) * (1 - exp(eta))
+#
+#              lambda * ((lambda - 1) * g^(lambda - 2) * g.^2 + g^(lambda - 1) * g..)
+#
+#            }
+#
+#            rho <- function(eta, lambda){
+#
+#              g <- exp(-exp(-eta))
+#
+#              g^lambda * log(g)
+#
+#            }
+#
+#            rho2 <- function(eta, lambda){
+#
+#              g <- exp(-exp(-eta))
+#
+#              g^lambda  * (log(g))^2
+#
+#            }
+#
+#            rho.eta <- function(eta, lambda){
+#
+#              g <- exp(-exp(-eta))
+#              g. <- exp(-exp(-eta) - eta)
+#
+#              g. * g^(lambda  - 1) * (lambda  * log(g) + 1)
+#
+#            }
+#
+#            plink <- TRUE
+#
+#            name <- "power loglog"
+#          },
+#
+#
+#          # Power complement log-log -----------------------------------------------------------------------------------
+#          pcloglog = {
+#
+#            linkfun <- function(mu, lambda, ...) log(-log(1 - mu^(1 / lambda)))
+#
+#            linkinv <- function(eta, lambda) pmax(pmin((-expm1(-exp(eta)))^lambda, 1 - .Machine$double.eps), .Machine$double.eps)
+#
+#            mu.eta <- function(eta, lambda){
+#
+#              g <- 1 - exp(-exp(eta))
+#              g. <- exp(eta - exp(eta))
+#
+#              lambda * g^(lambda - 1) * g.
+#
+#            }
+#
+#            mu2.eta2 <- function(eta, lambda) {
+#
+#              g <- 1 - exp(-exp(eta))
+#              g. <- exp(eta - exp(eta))
+#              g.. <- g. * (1 - exp(eta))
+#
+#              lambda * ((lambda - 1) * g^(lambda - 2) * g.^2 + g^(lambda - 1) * g..)
+#
+#            }
+#
+#            rho <- function(eta, lambda){
+#
+#              g <- 1 - exp(-exp(eta))
+#
+#              g^lambda * log(g)
+#
+#            }
+#
+#            rho2 <- function(eta, lambda){
+#
+#              g <- 1 - exp(-exp(eta))
+#
+#              g^lambda  * (log(g))^2
+#
+#            }
+#
+#            rho.eta <- function(eta, lambda){
+#
+#              g <- 1 - exp(-exp(eta))
+#              g. <- exp(eta - exp(eta))
+#
+#              g. * g^(lambda  - 1) * (lambda  * log(g) + 1)
+#
+#            }
+#
+#            plink <- TRUE
+#
+#            name <- "power complement loglog"
+#          },
+#
+#          # Reversal power link functions -----------------------------------------------------------
+#
+#          ## Reversal power logit ----
+#          rplogit = {
+#
+#            linkfun <- function(mu, lambda = NULL, ...) -stats::qlogis((1 - mu)^(1/lambda))
+#
+#            linkinv <- function(eta, lambda) 1 - stats::plogis(-eta)^lambda
+#
+#            mu.eta <- function(eta, lambda){
+#
+#              g <- stats::plogis(-eta)
+#              g. <- stats::dlogis(-eta)
+#              lambda * g^(lambda - 1) * g.
+#
+#            }
+#
+#            mu2.eta2 <- function(eta, lambda) {
+#
+#              g <- stats::plogis(-eta)
+#              g. <- stats::dlogis(-eta)
+#              g.. <- g. * (1 - exp(eta)) / (1 + exp(eta))
+#
+#              lambda * ((lambda - 1) * g^(lambda - 2) * (g.)^2 + g^(lambda - 1) * g..)
+#
+#            }
+#
+#            rho <- function(eta, lambda){
+#
+#              g <- stats::plogis(-eta)
+#              - g^lambda * log(g)
+#
+#            }
+#
+#            rho2 <- function(eta, lambda){
+#
+#              g <- stats::plogis(-eta)
+#
+#              - g^lambda * (log(g))^2
+#
+#            }
+#
+#            rho.eta <- function(eta, lambda){
+#
+#              g <- stats::plogis(-eta)
+#              g. <- stats::dlogis(-eta)
+#              g^(lambda - 1) * g. + lambda * (lambda - 1) * g^(lambda - 2) * log(g) * g.
+#
+#            }
+#
+#            plink <- TRUE
+#
+#            name <- "reversal power logit"
+#          },
+#
+#          ## Reversal power probit --------------------------------------------------------------------------
+#          rpprobit = {
+#
+#            linkfun <- function(mu, lambda, ...) -stats::qnorm((1 - mu)^(1/lambda))
+#
+#            linkinv <- function(eta, lambda) {
+#              1 - stats::pnorm(-eta)^lambda
+#            }
+#
+#            mu.eta <- function(eta, lambda){
+#
+#              g <- stats::pnorm(-eta)
+#              g. <- stats::dnorm(-eta)
+#              lambda * g^(lambda - 1) * g.
+#
+#            }
+#
+#            mu2.eta2 <- function(eta, lambda) {
+#
+#              g <- stats::pnorm(-eta)
+#              g. <- stats::dnorm(-eta)
+#              g.. <- eta * g.
+#
+#              lambda * ((lambda - 1) * g^(lambda - 2) * (g.)^2 + g^(lambda - 1) * g..)
+#
+#            }
+#
+#            rho <- function(eta, lambda){
+#
+#              g <- stats::pnorm(-eta)
+#              - g^lambda * log(g)
+#
+#            }
+#
+#            rho2 <- function(eta, lambda){
+#
+#              g <- stats::pnorm(-eta)
+#              - g^lambda * (log(g))^2
+#
+#            }
+#
+#            rho.eta <- function(eta, lambda){
+#
+#              g <- stats::pnorm(-eta)
+#              g. <- stats::dnorm(-eta)
+#              g^(lambda - 1) * g. + lambda * (lambda - 1) * g^(lambda - 2) * log(g) * g.
+#
+#            }
+#
+#            plink <- TRUE
+#
+#            name <- "reversal power probit"
+#          },
+#
+#          ## Reversal power cauchit ------------------------------------------------------------------
+#          rpcauchit = {
+#
+#            linkfun <- function(mu, lambda, ...) -stats::qcauchy((1 - mu)^(1 / lambda))
+#
+#            linkinv <- function(eta, lambda) {
+#              1 - stats::pcauchy(-eta)^lambda
+#            }
+#
+#            mu.eta <- function(eta, lambda){
+#
+#              g <- stats::pcauchy(-eta)
+#              g. <- stats::dcauchy(-eta)
+#              lambda * g^(lambda - 1) * g.
+#
+#            }
+#
+#            mu2.eta2 <- function(eta, lambda) {
+#
+#              g <- stats::pcauchy(-eta)
+#              g. <- stats::dcauchy(-eta)
+#              g.. <- 2 * eta * g. / (1 + eta^2)
+#
+#              lambda * ((lambda - 1) * g^(lambda - 2) * (g.)^2 + g^(lambda - 1) * g..)
+#
+#            }
+#
+#            rho <- function(eta, lambda){
+#
+#              g <- stats::pcauchy(-eta)
+#              - g^lambda * log(g)
+#
+#            }
+#
+#            rho2 <- function(eta, lambda){
+#
+#              g <- stats::pcauchy(-eta)
+#
+#              - g^lambda * (log(g))^2
+#
+#            }
+#
+#            rho.eta <- function(eta, lambda){
+#
+#              g <- stats::pcauchy(-eta)
+#              g. <- stats::dcauchy(-eta)
+#              g^(lambda - 1) * g. + lambda * (lambda - 1) * g^(lambda - 2) * log(g) * g.
+#
+#            }
+#
+#            plink <- TRUE
+#
+#            name <- "reversal power cauchit"
+#          },
+#
+#          ## Reversal power log-log ------------------------------------------------------------------
+#          rploglog = {
+#
+#            linkfun <- function(mu, lambda, ...) log(-log((1 - mu)^(1 / lambda)))
+#
+#            linkinv <- function(eta, lambda){
+#              1 - pmax(pmin(exp(-exp(eta)), 1 - .Machine$double.eps), .Machine$double.eps)^lambda
+#            }
+#
+#            mu.eta <- function(eta, lambda){
+#
+#              g <- exp(-exp(eta))
+#              g. <- exp(-exp(eta) + eta)
+#              lambda * g^(lambda - 1) * g.
+#
+#            }
+#
+#            mu2.eta2 <- function(eta, lambda) {
+#
+#              g <- exp(-exp(eta))
+#              g. <- exp(-exp(eta) + eta)
+#              g.. <- exp(2 * eta - exp(eta)) * (1 - exp(-eta))
+#
+#              lambda * ((lambda - 1) * g^(lambda - 2) * (g.)^2 + g^(lambda - 1) * g..)
+#
+#            }
+#
+#            rho <- function(eta, lambda){
+#
+#              g <- exp(-exp(eta))
+#              - g^lambda * log(g)
+#
+#            }
+#
+#            rho2 <- function(eta, lambda){
+#
+#              g <- exp(-exp(eta))
+#              - g^lambda * (log(g))^2
+#
+#            }
+#
+#            rho.eta <- function(eta, lambda){
+#
+#              g <- exp(-exp(eta))
+#              g. <- exp(-exp(eta) + eta)
+#              g^(lambda - 1) * g. + lambda * (lambda - 1) * g^(lambda - 2) * log(g) * g.
+#
+#            }
+#
+#            plink <- TRUE
+#
+#            name <- "reversal power log-log"
+#          },
+#
+#          ## Reversal power complement log-log -------------------------------------------------------
+#          rpcloglog = {
+#
+#            linkfun <- function(mu, lambda, ...) -log(-log(1 - (1 - mu)^(1 / lambda)))
+#
+#            linkinv <- function(eta, lambda){
+#              1 - pmax(pmin(-expm1(-exp(-eta)), 1 - .Machine$double.eps), .Machine$double.eps)^lambda
+#            }
+#
+#            mu.eta <- function(eta, lambda){
+#
+#              g <- 1 - exp(-exp(-eta))
+#              g. <- exp(-eta - exp(-eta))
+#              lambda * g^(lambda - 1) * g.
+#
+#            }
+#
+#            mu2.eta2 <- function(eta, lambda) {
+#
+#              g <- 1 - exp(-exp(-eta))
+#              g. <- exp(-eta - exp(-eta))
+#              g.. <- g. * (1 - exp(-eta))
+#
+#              lambda * ((lambda - 1) * g^(lambda - 2) * (g.)^2 + g^(lambda - 1) * g..)
+#
+#            }
+#
+#            rho <- function(eta, lambda){
+#
+#              g <- 1 - exp(-exp(-eta))
+#              - g^lambda * log(g)
+#
+#            }
+#
+#            rho2 <- function(eta, lambda){
+#
+#              g <- 1 - exp(-exp(-eta))
+#              - g^lambda * (log(g))^2
+#
+#            }
+#
+#            rho.eta <- function(eta, lambda){
+#
+#              g <- 1 - exp(-exp(-eta))
+#              g. <- exp(-eta - exp(-eta))
+#              g^(lambda - 1) * g. + lambda * (lambda - 1) * g^(lambda - 2) * log(g) * g.
+#
+#            }
+#
+#            plink <- TRUE
+#
+#            name <- "reversal power complement log-log"
+#          },
+#
+#          # Reversal Aranda-Ordaz -------------------------------------------------------------------
+#          raordaz = {
+#
+#            linkfun <- function(mu, lambda, ...) log(lambda / (mu^(-lambda) - 1))
+#
+#            linkinv <- function(eta, lambda){
+#              e <- pmax(exp(-eta), .Machine$double.ep)
+#              (1 + lambda * e)^(-1 / lambda)
+#            }
+#
+#            mu.eta <- function(eta, lambda){
+#
+#              g <- 1 - (1 + lambda * exp(-eta))^(-1 / lambda)
+#              g. <- exp(-eta) * (1 + lambda * exp(-eta))^(-1 - 1 / lambda)
+#              lambda * g^(lambda - 1) * g.
+#
+#            }
+#
+#            mu2.eta2 <- function(eta, lambda) {
+#
+#              g <- 1 - (1 + lambda * exp(-eta))^(-1 / lambda)
+#              g. <- exp(-eta) * (1 + lambda * exp(-eta))^(-1 - 1 / lambda)
+#              g.. <- exp(-eta) * (1 - (1 + lambda) / (exp(eta) + lambda)) /
+#                ((1 + lambda * exp(-eta))^(1 + 1 / lambda))
+#
+#              lambda * ((lambda - 1) * g^(lambda - 2) * (g.)^2 + g^(lambda - 1) * g..)
+#
+#            }
+#
+#            rho <- function(eta, lambda){
+#
+#              g <- 1 - (1 + lambda * exp(-eta))^(-1 / lambda)
+#              - g^lambda * log(g)
+#
+#            }
+#
+#            rho2 <- function(eta, lambda){
+#
+#              g <- 1 - (1 + lambda * exp(-eta))^(-1 / lambda)
+#              - g^lambda * (log(g))^2
+#
+#            }
+#
+#            rho.eta <- function(eta, lambda){
+#
+#              g <- 1 - (1 + lambda * exp(-eta))^(-1 / lambda)
+#              g. <- exp(-eta) * (1 + lambda * exp(-eta))^(-1 - 1 / lambda)
+#              g^(lambda - 1) * g. + lambda * (lambda - 1) * g^(lambda - 2) * log(g) * g.
+#
+#            }
+#
+#            plink <- TRUE
+#
+#            name <- "reversal Aranda-Ordaz"
+#          },
+#
+#
+#
+#
+#          stop(gettextf("%s link not recognised", sQuote(link)), domain = NA))
+#   environment(linkfun) <- environment(linkinv) <- environment(mu.eta) <- environment(mu2.eta2) <-
+#     environment(rho) <- environment(rho2) <- environment(rho.eta) <- asNamespace("stats")
+#   structure(list(linkfun = linkfun, linkinv = linkinv, mu.eta = mu.eta, mu2.eta2 = mu2.eta2,
+#                  rho = rho, rho2 = rho2, rho.eta = rho.eta, plink = plink, name = name), class = "link-glm")
+#
+# }
+
+
+
+# power_link_functions <- function(eta, lambda, g, g., g..) {
+#
+#   # First order derivatives
+#   d1_eta <- lambda * g^(lambda - 1) * g.
+#   d1_lambda <- g^lambda * log(g)
+#
+#   # Second order derivatives
+#   d2_eta2  <- lambda * ((lambda - 1) * g^(lambda - 2) * g.^2 + g^(lambda - 1) * g..)
+#   d2_lambda2  <- g^lambda  * (log(g))^2
+#   d2_eta_lambda  <- g. * g^(lambda  - 1) * (lambda  * log(g) + 1)
+#
+#   list(linkinv = g^lambda,
+#        mu.eta = d1_eta,
+#        mu2.eta2 = d2_eta2,
+#        rho = d1_lambda,
+#        rho2 = d2_lambda2,
+#        rho.eta = d2_eta_lambda)
+# }
+
+# compute_derivatives <- function(eta, lambda, g, g., g..) {
+#
+#   # OBS!!!
+#   # g = g(-eta)
+#   # g. = g.(-eta)
+#   # g.. = g..(-eta)
+#
+#   # Derivadas de primeira ordem
+#   mu.eta <- lambda * g^(lambda - 1) * g.
+#   rho <- - g^lambda * log(g)
+#
+#   # Derivadas de segunda ordem
+#   mu2.eta2 <- lambda * ((lambda - 1) * g^(lambda - 2) * (g.)^2 + g^(lambda - 1) * g..)
+#   rho2 <- - g^lambda * (log(g))^2
+#   rho.eta <- g^(lambda - 1) * g. + lambda * (lambda - 1) * g^(lambda - 2) * log(g) * g.
+#
+#   # Criando lista com as derivadas
+#   #   list(mu.eta = mu.eta,
+#   #        mu2.eta2 = mu2.eta2,
+#   #        rho = rho,
+#   #        rho2 = rho2,
+#   #        rho.eta = rho.eta)
+#
+#   return(derivatives)
+# }
+
+
+
+
+
 make.plink <- function(link)
 {
   switch(link,
