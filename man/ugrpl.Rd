@@ -12,8 +12,8 @@ ugrpl(
   link = "aordaz",
   sigma.link,
   control = ug_control(...),
-  y = FALSE,
-  x = FALSE,
+  y = TRUE,
+  x = TRUE,
   ...
 )
 }

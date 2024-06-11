@@ -112,7 +112,7 @@ NULL
 #' @rdname ugrpl
 #' @export
 ugrpl <- function(formula, data, subset, na.action, link = "aordaz", sigma.link,
-                  control = ug_control(...), y = FALSE, x = FALSE,...)
+                  control = ug_control(...), y = TRUE, x = TRUE,...)
 {
 
   ret.y <- y
@@ -193,15 +193,15 @@ ugrpl <- function(formula, data, subset, na.action, link = "aordaz", sigma.link,
 
   ## Covariance matrix
   if(control$hessian){
-    vcov <- solve(-as.matrix(opt$hessian))
+    vcov <- chol2inv(Rfast::cholesky(-opt$hessian))
   }else{
     vcov <- K_ug(par = c(beta, gamma, lambda1, lambda2), X = X, Z = Z,
                  link = link, sigma.link = sigma.link, inverse = TRUE)
   }
 
   ## Fitted values
-  mu  <- g(link)$linkinv(X%*%beta, lambda1)
-  sigma <- g(sigma.link)$linkinv(Z%*%gamma, lambda2)
+  mu  <- c(g(link)$linkinv(X%*%beta, lambda1))
+  sigma <- c(g(sigma.link)$linkinv(Z%*%gamma, lambda2))
 
   ## Log-likelihood
   logLik <- opt$value
