@@ -206,5 +206,10 @@ qugamma <- function(p, mu, sigma, lower.tail = TRUE){
 #' @rdname ugamma
 #' @export
 rugamma <- function(n, mu, sigma){
-  qugamma(stats::runif(n), mu, sigma)
+  #qugamma(stats::runif(n), mu, sigma)
+
+  alpha <- 1/sigma^2 - 1
+  beta <- mu^(1 / alpha) / (1 - mu^(1 / alpha))
+  exp(-stats::rgamma(n, alpha, beta))
+
 }
