@@ -425,9 +425,14 @@ plot.ugrpl <- function(x,
 
   ## Normal probability plot
   if(show[3]) {
-    stats::qqnorm(res, pch = "+", xlab = "Normal quantiles", ylab = Type, main = "", ...)
-    graphics::abline(0, 1, col = "gray50", lty = 2)
-    #stats::qqline(res, col = "gray50", lty = 2)
+    if (type == "quantile") {
+      car::qqPlot(res, id = FALSE, pch = 3, grid = FALSE,
+                  xlab = "Normal quantiles", ylab = Type)
+    } else {
+      stats::qqnorm(res, pch = "+", xlab = "Normal quantiles", ylab = Type, main = "", ...)
+      graphics::abline(0, 1, col = "gray50", lty = 2)
+    }
+
   }
 
   ## Local influence
