@@ -40,7 +40,7 @@ plink_choice <- function(object, link, sigma.link,
   FIT <- list()
   l <- 1L
   AIC <- BIC <- Upsilon <- matrix(NA, length(link), length(sigma.link))
-  pb <- utils::txtProgressBar(1, length(sigma.link), style = 3)
+  pb <- utils::txtProgressBar(max = length(link), style = 3)
   for (i in link){
 
     m <- 1L
@@ -48,7 +48,7 @@ plink_choice <- function(object, link, sigma.link,
     for (j in sigma.link) {
 
       if (i != object_link | j != object_sigma.link) {
-        FIT[[i]][[j]] <- try(stats::update(object, link = i, sigma.link = j, control = control))
+        FIT[[i]][[j]] <- suppressWarnings(try(stats::update(object, link = i, sigma.link = j, control = control), silent = TRUE))
       } else {
         FIT[[i]][[j]] <- object
       }
@@ -71,6 +71,8 @@ plink_choice <- function(object, link, sigma.link,
     l <- l + 1
     utils::setTxtProgressBar(pb, l)
   }
+
+  cat("\n")
 
   rownames(AIC) <- rownames(BIC) <- rownames(Upsilon) <- link
   colnames(AIC) <- colnames(BIC) <- colnames(Upsilon) <- sigma.link
@@ -123,7 +125,7 @@ print.plink_choice <- function(x, ...) {
   }
 
   cat("\nBest link for the mean submodel:", x$link[id[1]])
-  cat("\nBest link for the dispersion submodel:", x$sigma.link[id[2]])
+  cat("\nBest link for the dispersion submodel:", x$sigma.link[id[2]], "\n")
 
   invisible(x)
 }
