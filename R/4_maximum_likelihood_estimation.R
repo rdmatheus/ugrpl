@@ -10,7 +10,7 @@
 #' @param method the method to be used. See "Details" in \code{\link[stats]{optim}}. The default
 #'     method (\code{"BFGS"}) is a quasi-Newton method (also known as a variable metric algorithm),
 #'     specifically that published simultaneously in 1970 by Broyden, Fletcher, Goldfarb and Shanno.
-#' @param maxit the maximum number of iterations of the algorithm. Defaults to \code{5,000}.
+#' @param maxit the maximum number of iterations of the algorithm. Defaults to \code{10000}.
 #' @param start An optional vector of initial values to start the algorithm
 #'     iterations. The input order should be \code{(beta, gamma, lambda1, lambda2)}, where
 #'     \code{beta} is a \emph{k}-dimensional vector with the coefficients associated with the mean,
@@ -33,7 +33,7 @@
 #' @return A list with the arguments specified.
 #' @export
 #'
-ug_control <- function(method = "BFGS", maxit = 5000, start = NULL,
+ug_control <- function(method = "BFGS", maxit = 10000, start = NULL,
                        trace = FALSE, hessian = FALSE, ...)
 {
   rval <- list(method = method, maxit = maxit, hessian = hessian,
@@ -42,7 +42,7 @@ ug_control <- function(method = "BFGS", maxit = 5000, start = NULL,
   rval <- c(rval, list(...))
 
   if (!is.null(rval$fnscale))
-    warning("fnscale must not be modified")
+    stop("\nfnscale must not be modified")
 
   rval$fnscale <- -1
 
@@ -109,7 +109,7 @@ ug_mle <- function(y, X, Z = NULL, link = "aordaz", sigma.link = NULL,
                                        hessian = hessian))
 
   if (opt$convergence > 0)
-    warning(cat("optimization failed to converge\n"))
+    warning("optimization failed to converge")
 
   opt$start <- start
   opt

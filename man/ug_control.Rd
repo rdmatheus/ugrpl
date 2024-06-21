@@ -6,7 +6,7 @@
 \usage{
 ug_control(
   method = "BFGS",
-  maxit = 5000,
+  maxit = 10000,
   start = NULL,
   trace = FALSE,
   hessian = FALSE,
@@ -18,7 +18,7 @@ ug_control(
 method (\code{"BFGS"}) is a quasi-Newton method (also known as a variable metric algorithm),
 specifically that published simultaneously in 1970 by Broyden, Fletcher, Goldfarb and Shanno.}
 
-\item{maxit}{the maximum number of iterations of the algorithm. Defaults to \code{5,000}.}
+\item{maxit}{the maximum number of iterations of the algorithm. Defaults to \code{10000}.}
 
 \item{start}{An optional vector of initial values to start the algorithm
 iterations. The input order should be \code{(beta, gamma, lambda1, lambda2)}, where
