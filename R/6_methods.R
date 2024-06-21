@@ -222,8 +222,10 @@ residuals.ugrpl <- function(object,
 
 # Print
 #' @rdname ugrpl-methods
+#' @param digits a non-null value for digits specifies the minimum number of significant digits to
+#'     be printed in values. The default, \code{getOption("digits")}.
 #' @export
-print.ugrpl <- function(x, ...)
+print.ugrpl <- function(x, digits = getOption("digits"), ...)
 {
 
   ## Covenience variables
@@ -261,11 +263,11 @@ print.ugrpl <- function(x, ...)
     cat("\nmodel did not converge\n")
   }else{
     cat("\nMean Coefficients:\n")
-    tab_mean <- (x$coefficients)$mean
+    tab_mean <- round(x$coefficients$mean, digits)
     names(tab_mean) <- mean_names
     print(tab_mean)
     cat("\nDispersion Coefficients:\n")
-    tab_disp <- (x$coefficients)$dispersion
+    tab_disp <- round(x$coefficients$dispersion, digits)
     names(tab_disp) <- disp_names
     print(tab_disp)
   }
@@ -396,7 +398,7 @@ summary.ugrpl <- function(object, ...)
 # Print summary
 #' @rdname ugrpl-methods
 #' @export
-print.summary.ugrpl <- function(x, ...)
+print.summary.ugrpl <- function(x, digits = getOption("digits"), ...)
 {
 
   Link_mean <- make.plink(x$link)$name
@@ -406,39 +408,39 @@ print.summary.ugrpl <- function(x, ...)
   print(x$call)
 
   cat("\nSummary for quantile residuals:\n")
-  print(x$residuals)
+  print(round(x$residuals, digits))
 
   cat("\nMean model with", Link_mean, "link function:\n")
 
   if (!is.null(x$lambda1)){
     cat("\nLink parameter:\n")
-    print(x$summ_l1)
+    print(round(x$summ_l1, digits))
   }
 
   cat("\nCoefficients:\n")
-  stats::printCoefmat(x$mean)
+  stats::printCoefmat(round(x$mean, digits))
 
   cat("\nDispersion model with", Link_disp, "link function:\n")
 
   if (!is.null(x$lambda2)){
     cat("\nLink parameter:\n")
-    print(x$summ_l2)
+    print(round(x$summ_l2, digits))
   }
 
   cat("\nCoefficients:\n")
-  stats::printCoefmat(x$dispersion)
+  stats::printCoefmat(round(x$dispersion, digits))
 
   cat(
-    "\nLog-likelihood:", x$logLik,
-    "\nUpsilon statistic:", round(x$Upsilon, 4), "(reference value: ~ 0)")
+    "\nLog-likelihood:", round(x$logLik, digits),
+    "\nUpsilon statistic:", round(x$Upsilon, digits), "(reference value: ~ 0)")
 
   if (!is.null(x$GpseudoR2)) {
-    cat("\nGeneralized pseudo-R2:", round(x$GpseudoR2, 4), "(reference value: ~ 1)")
+    cat("\nGeneralized pseudo-R2:", round(x$GpseudoR2, digits), "(reference value: ~ 1)")
   } else {
-    cat("\nPseudo-R2:", round(x$pseudoR2, 4), "(reference value: ~ 1)")
+    cat("\nPseudo-R2:", round(x$pseudoR2, digits), "(reference value: ~ 1)")
   }
 
-  cat("\nAIC:", x$AIC, "and BIC:", x$BIC)
+  cat("\nAIC:", round(x$AIC, digits), "and BIC:", round(x$BIC, digits))
 
   invisible(x)
 }

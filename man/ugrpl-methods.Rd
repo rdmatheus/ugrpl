@@ -25,11 +25,11 @@
 
 \method{AIC}{ugrpl}(object, ..., k = 2)
 
-\method{print}{ugrpl}(x, ...)
+\method{print}{ugrpl}(x, digits = getOption("digits"), ...)
 
 \method{summary}{ugrpl}(object, ...)
 
-\method{print}{summary.ugrpl}(x, ...)
+\method{print}{summary.ugrpl}(x, digits = getOption("digits"), ...)
 }
 \arguments{
 \item{formula}{a model formula or terms object or an R object.}
@@ -46,6 +46,9 @@ model is returned.}
 \code{k = 2} is the classical AIC.}
 
 \item{x, object}{an object of class \code{ugrpl}.}
+
+\item{digits}{a non-null value for digits specifies the minimum number of significant digits to
+be printed in values. The default, \code{getOption("digits")}.}
 }
 \description{
 Methods for 'ugrpl' objects
