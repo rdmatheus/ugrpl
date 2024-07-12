@@ -152,7 +152,7 @@
 
             mu.eta <- function(eta, lambda = NULL) stats::dlogis(eta)
 
-            mu2.eta2 <- function(eta, lambda = NULL) - stats::dlogis(eta) * (1 - exp(-eta)) / (1 + exp(-eta))
+            mu2.eta2 <- function(eta, lambda = NULL) stats::dlogis(eta) * (exp(-eta) - 1) / (exp(-eta) + 1)
 
             rho <- function(eta, lambda = NULL) NULL
 
@@ -219,7 +219,7 @@
 
             mu.eta <- function(eta, lambda = NULL) exp(-eta - exp(-eta))
 
-            mu2.eta2 <- function(eta, lambda = NULL) exp(-2 * eta - exp(-eta)) * (1 - exp(eta))
+            mu2.eta2 <- function(eta, lambda = NULL) exp(- eta - exp(-eta)) * (exp(-eta) - 1)
 
             rho <- function(eta, lambda = NULL) NULL
 
@@ -291,32 +291,25 @@
 
             rho <- function(eta, lambda){
 
-              eta <- pmin(pmax(eta, -.Machine$double.xmax), .Machine$double.xmax)
-              e <- pmin(pmax(exp(eta), -.Machine$double.xmax), .Machine$double.xmax)
-
-              (1 / (exp(-eta) + lambda) - log1p(lambda * e) / lambda) /
-                (lambda * (1 + lambda * e)^(1/lambda))
+               (1 + lambda * exp(eta))^(-1/lambda) * (1 / (exp(-eta) + lambda) -
+                                                  log(1 + lambda * exp(eta)) / lambda) / lambda
             }
 
             rho2 <- function(eta, lambda){
 
-              eta <- pmin(pmax(eta, -.Machine$double.xmax), .Machine$double.xmax)
-              e <- pmin(pmax(exp(eta), -.Machine$double.xmax), .Machine$double.xmax)
+               aux <- (1 + lambda * exp(eta))
 
-              (2 * log(e * lambda + 1) / (lambda^3)  -
-                  2 * e / (lambda^2 * (e * lambda + 1)) -
-                  exp(2 * eta) / (lambda * (e * lambda + 1)^2) -
-                  (log(e * lambda + 1) / (lambda^2) - e / (lambda * (e * lambda + 1)))^2) /
-                ((e * lambda + 1)^(1 / lambda))
+               aux^(-1 / lambda) * (2 * log(aux) / lambda^3 - 2 * exp(eta) / (lambda^2 * aux) -
+                                       exp(2 * eta) / (lambda * aux^2) -
+                                       (log(aux) / lambda^2 - exp(eta) / (lambda * aux))^2)
             }
 
             rho.eta <- function(eta, lambda){
 
-              eta <- pmin(pmax(eta, -.Machine$double.xmax), .Machine$double.xmax)
-              e <- pmin(pmax(exp(eta), -.Machine$double.xmax), .Machine$double.xmax)
+               aux <- (1 + lambda * exp(eta))
 
-              e * (log1p(e * lambda) / lambda - (1 + lambda) / (exp(-eta) + lambda)) /
-                (lambda * (1 + e * lambda)^(1 / lambda + 1))
+               exp(eta) * aux^(-1/lambda - 1) * (log(aux) / lambda -
+                                                    (1 + lambda) / (exp(-eta) + lambda)) / lambda
 
             }
 
@@ -339,6 +332,7 @@
 
               g <- stats::plogis(eta)
               g. <- stats::dlogis(eta)
+
               lambda * g^(lambda - 1) * g.
 
             }
@@ -347,7 +341,8 @@
 
               g <- stats::plogis(eta)
               g. <- stats::dlogis(eta)
-              g.. <- g. * (1 - exp(-eta)) / (1 + exp(-eta))
+              g.. <- g. * (exp(-eta) - 1) / (exp(-eta) + 1)
+
               lambda * ((lambda - 1) * g^(lambda - 2) * g.^2 + g^(lambda - 1) * g..)
 
             }
@@ -370,7 +365,7 @@
 
               g <- stats::plogis(eta)
               g. <- stats::dlogis(eta)
-              g. * g^(lambda  - 1) * (lambda  * log(g) + 1)
+              g. * g^(lambda  - 1) * (1 + lambda * log(g))
 
             }
 
@@ -426,7 +421,7 @@
               g <- stats::pnorm(eta)
               g. <- stats::dnorm(eta)
 
-              g. * g^(lambda  - 1) * (lambda  * log(g) + 1)
+              g. * g^(lambda  - 1) * (1 + lambda * log(g))
 
             }
 
@@ -482,7 +477,7 @@
               g <- stats::pcauchy(eta)
               g. <- stats::dcauchy(eta)
 
-              g. * g^(lambda  - 1) * (lambda  * log(g) + 1)
+              g. * g^(lambda  - 1) * (1 + lambda * log(g))
 
             }
 
@@ -501,7 +496,7 @@
             mu.eta <- function(eta, lambda){
 
               g <- exp(-exp(-eta))
-              g. <- exp(-exp(-eta) - eta)
+              g. <- exp(-eta - exp(-eta))
 
               lambda * g^(lambda - 1) * g.
 
@@ -510,8 +505,8 @@
             mu2.eta2 <- function(eta, lambda) {
 
               g <- exp(-exp(-eta))
-              g. <- exp(-exp(-eta) - eta)
-              g.. <- exp(-2 * eta - exp(-eta)) * (1 - exp(eta))
+              g. <- exp(-eta - exp(-eta))
+              g.. <- exp(-eta - exp(-eta)) * (exp(-eta) - 1)
 
               lambda * ((lambda - 1) * g^(lambda - 2) * g.^2 + g^(lambda - 1) * g..)
 
@@ -536,9 +531,9 @@
             rho.eta <- function(eta, lambda){
 
               g <- exp(-exp(-eta))
-              g. <- exp(-exp(-eta) - eta)
+              g. <- exp(-eta - exp(-eta))
 
-              g. * g^(lambda  - 1) * (lambda  * log(g) + 1)
+              g. * g^(lambda  - 1) * (1 + lambda * log(g))
 
             }
 
@@ -595,7 +590,7 @@
               g <- 1 - exp(-exp(eta))
               g. <- exp(eta - exp(eta))
 
-              g. * g^(lambda  - 1) * (lambda  * log(g) + 1)
+              g. * g^(lambda  - 1) * (1 + lambda * log(g))
 
             }
 
@@ -625,9 +620,11 @@
 
               g <- stats::plogis(-eta)
               g. <- stats::dlogis(-eta)
-              g.. <- g. * (1 - exp(eta)) / (1 + exp(eta))
+              g.. <- g. * (exp(eta) - 1) / (exp(eta) + 1)
 
-              lambda * ((lambda - 1) * g^(lambda - 2) * (g.)^2 + g^(lambda - 1) * g..)
+              - lambda * g^(lambda - 2) * (g * g.. + (lambda - 1) * g.^2)
+
+              # lambda * ((lambda - 1) * g^(lambda - 2) * (g.)^2 + g^(lambda - 1) * g..)
 
             }
 
@@ -650,7 +647,7 @@
 
               g <- stats::plogis(-eta)
               g. <- stats::dlogis(-eta)
-              g^(lambda - 1) * g. + lambda * (lambda - 1) * g^(lambda - 2) * log(g) * g.
+              g^(lambda - 1) * g. * (1 + lambda * log(g))
 
             }
 
@@ -682,7 +679,9 @@
               g. <- stats::dnorm(-eta)
               g.. <- eta * g.
 
-              lambda * ((lambda - 1) * g^(lambda - 2) * (g.)^2 + g^(lambda - 1) * g..)
+              - lambda * g^(lambda - 2) * (g * g.. + (lambda - 1) * g.^2)
+
+              # lambda * ((lambda - 1) * g^(lambda - 2) * (g.)^2 + g^(lambda - 1) * g..)
 
             }
 
@@ -704,7 +703,7 @@
 
               g <- stats::pnorm(-eta)
               g. <- stats::dnorm(-eta)
-              g^(lambda - 1) * g. + lambda * (lambda - 1) * g^(lambda - 2) * log(g) * g.
+              g^(lambda - 1) * g. * (1 + lambda * log(g))
 
             }
 
@@ -736,7 +735,9 @@
               g. <- stats::dcauchy(-eta)
               g.. <- 2 * eta * g. / (1 + eta^2)
 
-              lambda * ((lambda - 1) * g^(lambda - 2) * (g.)^2 + g^(lambda - 1) * g..)
+              - lambda * g^(lambda - 2) * (g * g.. + (lambda - 1) * g.^2)
+
+              # lambda * ((lambda - 1) * g^(lambda - 2) * (g.)^2 + g^(lambda - 1) * g..)
 
             }
 
@@ -759,7 +760,7 @@
 
               g <- stats::pcauchy(-eta)
               g. <- stats::dcauchy(-eta)
-              g^(lambda - 1) * g. + lambda * (lambda - 1) * g^(lambda - 2) * log(g) * g.
+              g^(lambda - 1) * g. * (1 + lambda * log(g))
 
             }
 
@@ -780,7 +781,7 @@
             mu.eta <- function(eta, lambda){
 
               g <- exp(-exp(eta))
-              g. <- exp(-exp(eta) + eta)
+              g. <- exp(eta - exp(eta))
               lambda * g^(lambda - 1) * g.
 
             }
@@ -788,10 +789,12 @@
             mu2.eta2 <- function(eta, lambda) {
 
               g <- exp(-exp(eta))
-              g. <- exp(-exp(eta) + eta)
-              g.. <- exp(2 * eta - exp(eta)) * (1 - exp(-eta))
+              g. <- exp(eta - exp(eta))
+              g.. <- exp(eta - exp(eta)) * (exp(eta) - 1)
 
-              lambda * ((lambda - 1) * g^(lambda - 2) * (g.)^2 + g^(lambda - 1) * g..)
+              - lambda * g^(lambda - 2) * (g * g.. + (lambda - 1) * g.^2)
+
+              # lambda * ((lambda - 1) * g^(lambda - 2) * (g.)^2 + g^(lambda - 1) * g..)
 
             }
 
@@ -812,8 +815,8 @@
             rho.eta <- function(eta, lambda){
 
               g <- exp(-exp(eta))
-              g. <- exp(-exp(eta) + eta)
-              g^(lambda - 1) * g. + lambda * (lambda - 1) * g^(lambda - 2) * log(g) * g.
+              g. <- exp(eta - exp(eta))
+              g^(lambda - 1) * g. * (1 + lambda * log(g))
 
             }
 
@@ -845,7 +848,9 @@
               g. <- exp(-eta - exp(-eta))
               g.. <- g. * (1 - exp(-eta))
 
-              lambda * ((lambda - 1) * g^(lambda - 2) * (g.)^2 + g^(lambda - 1) * g..)
+              - lambda * g^(lambda - 2) * (g * g.. + (lambda - 1) * g.^2)
+
+              # lambda * ((lambda - 1) * g^(lambda - 2) * (g.)^2 + g^(lambda - 1) * g..)
 
             }
 
@@ -867,7 +872,7 @@
 
               g <- 1 - exp(-exp(-eta))
               g. <- exp(-eta - exp(-eta))
-              g^(lambda - 1) * g. + lambda * (lambda - 1) * g^(lambda - 2) * log(g) * g.
+              g^(lambda - 1) * g. * (1 + lambda * log(g))
 
             }
 
@@ -876,54 +881,57 @@
             name <- "reversal power complement log-log"
           },
 
-          # Reversal Aranda-Ordaz -------------------------------------------------------------------
           raordaz = {
 
             linkfun <- function(mu, lambda, ...) log(lambda / (mu^(-lambda) - 1))
 
             linkinv <- function(eta, lambda){
-              e <- pmax(exp(-eta), .Machine$double.ep)
+
+              e <- exp(-eta)
               (1 + lambda * e)^(-1 / lambda)
+
             }
 
-            mu.eta <- function(eta, lambda){
+            mu.eta <- function(eta, lambda) {
 
-              g <- 1 - (1 + lambda * exp(-eta))^(-1 / lambda)
-              g. <- exp(-eta) * (1 + lambda * exp(-eta))^(-1 - 1 / lambda)
-              lambda * g^(lambda - 1) * g.
+              e <- exp(-eta)
+              e * (1 + lambda * e)^(-1/lambda - 1)
 
             }
 
             mu2.eta2 <- function(eta, lambda) {
 
-              g <- 1 - (1 + lambda * exp(-eta))^(-1 / lambda)
-              g. <- exp(-eta) * (1 + lambda * exp(-eta))^(-1 - 1 / lambda)
-              g.. <- exp(-eta) * (1 - (1 + lambda) / (exp(eta) + lambda)) /
-                ((1 + lambda * exp(-eta))^(1 + 1 / lambda))
+              e <- exp(-eta)
+              e2 <- exp(eta)
 
-              lambda * ((lambda - 1) * g^(lambda - 2) * (g.)^2 + g^(lambda - 1) * g..)
-
+              e * ((1 + lambda) / (e2 + lambda) - 1) / (1 + lambda * e)^(1/lambda + 1)
             }
 
             rho <- function(eta, lambda){
 
-              g <- 1 - (1 + lambda * exp(-eta))^(-1 / lambda)
-              - g^lambda * log(g)
+              aux <- (1 + lambda * exp(-eta))
+
+              aux^(-1/lambda) * (log(aux) / lambda - 1 / (lambda + exp(eta))) / lambda
 
             }
 
             rho2 <- function(eta, lambda){
 
-              g <- 1 - (1 + lambda * exp(-eta))^(-1 / lambda)
-              - g^lambda * (log(g))^2
+               aux <- (1 + lambda * exp(-eta))
+
+               aux^(-1 / lambda) * ((log(aux) / lambda^2 - exp(-eta) / (lambda * aux))^2 -
+                                       2 * log(aux) / lambda^3 +
+                                       2 * exp(-eta) / (lambda^2 * aux) +
+                                       exp(-2 * eta) / (lambda * aux^2))
 
             }
 
             rho.eta <- function(eta, lambda){
 
-              g <- 1 - (1 + lambda * exp(-eta))^(-1 / lambda)
-              g. <- exp(-eta) * (1 + lambda * exp(-eta))^(-1 - 1 / lambda)
-              g^(lambda - 1) * g. + lambda * (lambda - 1) * g^(lambda - 2) * log(g) * g.
+              aux <- (1 + lambda * exp(-eta))
+
+               exp(-eta) * aux^(-1/lambda -1) * (log(aux) / lambda -
+                                                    (1 + lambda) / (exp(eta) + lambda)) / lambda
 
             }
 
@@ -931,9 +939,6 @@
 
             name <- "reversal Aranda-Ordaz"
           },
-
-
-
 
           stop(gettextf("%s link not recognised", sQuote(link)), domain = NA))
    environment(linkfun) <- environment(linkinv) <- environment(mu.eta) <- environment(mu2.eta2) <-
